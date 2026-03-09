@@ -140,17 +140,26 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 
 ```bash
 # 逐个检测，记录结果
-command -v xreach && xreach --version          # Twitter/X
-command -v yt-dlp                               # YouTube/B站
+command -v xreach && xreach --version          # Twitter/X（需 xreach auth 认证）
+command -v yt-dlp                               # YouTube/B站（需 Chrome 已登录账号）
 python3 -c "import feedparser"                  # RSS
 python3 -c "import miku_ai"                     # 微信公众号
 python3 -c "import yaml"                        # 配置解析
 python3 -c "import camoufox"                    # 网页阅读
-command -v mcporter                             # 小红书/Exa（CLI）
-curl -sf -o /dev/null http://localhost:18060/   # 小红书 MCP 服务
-command -v gh && gh auth status 2>&1            # GitHub
+command -v mcporter                             # 小红书/Exa（CLI 是否安装）
+curl -sf -o /dev/null http://localhost:18060/   # 小红书 MCP 服务（是否在运行）
+command -v gh && gh auth status 2>&1            # GitHub（需 gh auth login 认证）
 command -v agent-reach                          # 抖音
 ```
+
+**认证状态判断逻辑**：
+
+| 工具 | ✅ 可用条件 | ⚠️ 需认证条件 |
+|------|-----------|-------------|
+| xreach | `command -v xreach` 成功 + `xreach --version` 无报错 | 命令存在但未认证 → 提示 `xreach auth` |
+| yt-dlp | `command -v yt-dlp` 成功 | 命令存在即标 ✅，但附注"需 Chrome 已登录 YouTube/B站" |
+| mcporter | `command -v mcporter` 成功 **且** `curl localhost:18060` 成功 | CLI 已装但服务未运行 → 提示"请在另一个终端运行 `mcporter`" |
+| gh | `command -v gh` 成功 **且** `gh auth status` 成功 | 命令存在但未认证 → 提示 `gh auth login` |
 
 #### 阶段 2：自动安装缺失工具
 
@@ -189,16 +198,24 @@ command -v mcporter &>/dev/null || npm install -g mcporter --silent 2>&1
 📡 内容雷达启动
 
 === 工具自检 ===
-✅ yt-dlp — YouTube/B站
+✅ yt-dlp — YouTube/B站（请确保 Chrome 已登录 YouTube/B站 账号）
 ✅ feedparser — RSS 订阅（自动安装成功）
-✅ mcporter — 小红书/Exa
 ✅ miku-ai — 微信公众号（自动安装成功）
-⚠️ xreach — 已安装，首次使用需认证（运行 xreach auth）
-⚠️ gh — 需要认证（运行 gh auth login）
+⚠️ xreach — 已安装，需认证后可用（运行 xreach auth）
+⚠️ mcporter — 已安装，MCP 服务未运行（请在另一个终端运行 mcporter）
+⚠️ gh — 已安装，需认证后可用（运行 gh auth login）
 ❌ agent-reach — 未安装，抖音数据将用网页搜索替代
 
-正在用 5/7 可用工具扫描...
+正在用 3/7 可用工具扫描...
+
+💡 提示：认证 xreach 和启动 mcporter 后，下次运行可获得 Twitter 一手数据和小红书热帖。
 ```
+
+> **面板状态说明**：
+> - ✅ = 工具可用，直接采集一手数据
+> - ⚠️ = 工具已安装但需要认证或启动，本次降级到网页搜索
+> - ❌ = 工具不可用且无法自动安装，使用网页搜索替代
+> - 括号内 = 用户需要执行的操作命令
 
 #### 规则
 
