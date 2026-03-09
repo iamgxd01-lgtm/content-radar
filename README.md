@@ -89,6 +89,21 @@ bash setup.sh
 
 > **没运行 setup.sh 也没关系**——第一次输入"内容雷达"时，AI 会自动检测并安装缺失的工具。
 
+## 升级到最新版
+
+已经安装过的用户，两条命令升级：
+
+```bash
+cd content-radar   # 进入你之前 clone 的目录
+git pull && bash setup.sh
+```
+
+升级会自动更新 Skill 文件，**不会覆盖你的配置**（`~/.content-radar/my-radar.yaml` 保持不动）。
+
+升级完成后输入"内容雷达"即可体验新版——你会看到全新的工具状态面板、信源质量标签、时效标签等。
+
+> **忘了 clone 在哪？** 直接重新 clone 一份就行，你的配置文件在 `~/.content-radar/` 下，不会丢失。
+
 ## 支持的 AI 编辑器
 
 | 编辑器 | 状态 |
