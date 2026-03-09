@@ -510,11 +510,21 @@ curl -s "https://r.jina.ai/URL"
 
 ## 环境适配
 
-本 Skill 跨 AI 编辑器运行（Claude Code / Qwen Code / Codex 等）。
+本 Skill 设计为跨 AI 编辑器、跨操作系统运行。
+
+**AI 编辑器兼容**：
+- Claude Code：完整支持（内置 WebSearch + Bash）
+- Qwen Code（通义灵码）：支持（Bash 命令 + Exa 替代 WebSearch）
+- Codex CLI：支持
+- 其他支持 Markdown Skill 的 AI：支持
 
 **WebSearch 兼容**：降级策略中的"WebSearch"指：
 1. 优先用 AI 内置的 WebSearch（Claude Code）
 2. 否则用 Exa：`mcporter call 'exa.web_search_exa(query: "...", numResults: 5)'`
 3. 否则用 Jina Reader：`curl -s "https://s.jina.ai/关键词"`
+
+**操作系统兼容**：
+- macOS / Linux：直接使用 `python3`、`pip3`
+- Windows：使用 `python` 或 `python3`（取决于安装方式），`yt-dlp` 和 `mcporter` 跨平台可用
 
 $ARGUMENTS

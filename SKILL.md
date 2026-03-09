@@ -149,6 +149,7 @@ python3 -c "import camoufox"                    # 网页阅读
 command -v mcporter                             # 小红书/Exa（CLI）
 curl -sf -o /dev/null http://localhost:18060/   # 小红书 MCP 服务
 command -v gh && gh auth status 2>&1            # GitHub
+command -v agent-reach                          # 抖音
 ```
 
 #### 阶段 2：自动安装缺失工具
@@ -156,18 +157,22 @@ command -v gh && gh auth status 2>&1            # GitHub
 对所有检测为 ❌ 的工具，**自动执行安装命令，无需用户确认**：
 
 ```bash
+# 确定 pip 和 python 命令（兼容 Mac/Linux/Windows）
+PIP=$(command -v pip3 || command -v pip)
+PY=$(command -v python3 || command -v python)
+
 # 收集缺失的 pip 包
 MISSING_PIP=()
 command -v xreach &>/dev/null || MISSING_PIP+=(xreach)
 command -v yt-dlp &>/dev/null || MISSING_PIP+=(yt-dlp)
-python3 -c "import feedparser" &>/dev/null || MISSING_PIP+=(feedparser)
-python3 -c "import miku_ai" &>/dev/null || MISSING_PIP+=(miku-ai)
-python3 -c "import yaml" &>/dev/null || MISSING_PIP+=(pyyaml)
-python3 -c "import camoufox" &>/dev/null || MISSING_PIP+=(camoufox)
+$PY -c "import feedparser" &>/dev/null || MISSING_PIP+=(feedparser)
+$PY -c "import miku_ai" &>/dev/null || MISSING_PIP+=(miku-ai)
+$PY -c "import yaml" &>/dev/null || MISSING_PIP+=(pyyaml)
+$PY -c "import camoufox" &>/dev/null || MISSING_PIP+=(camoufox)
 
 # 批量安装（如果有缺失的）
 if [ ${#MISSING_PIP[@]} -gt 0 ]; then
-  pip3 install "${MISSING_PIP[@]}" --user --quiet 2>&1
+  $PIP install "${MISSING_PIP[@]}" --user --quiet 2>&1
 fi
 
 # npm 工具
@@ -184,15 +189,15 @@ command -v mcporter &>/dev/null || npm install -g mcporter --silent 2>&1
 📡 内容雷达启动
 
 === 工具自检 ===
-✅ xreach — Twitter/X（自动安装成功）
 ✅ yt-dlp — YouTube/B站
-✅ feedparser — RSS 订阅
+✅ feedparser — RSS 订阅（自动安装成功）
 ✅ mcporter — 小红书/Exa
+✅ miku-ai — 微信公众号（自动安装成功）
 ⚠️ xreach — 已安装，首次使用需认证（运行 xreach auth）
-⚠️ gh — 未安装，GitHub 数据将用网页搜索替代
-   如需启用：brew install gh && gh auth login
+⚠️ gh — 需要认证（运行 gh auth login）
+❌ agent-reach — 未安装，抖音数据将用网页搜索替代
 
-正在用可用工具扫描...
+正在用 5/7 可用工具扫描...
 ```
 
 #### 规则
@@ -292,13 +297,15 @@ asyncio.run(s())
 **feedparser ✅ 可用时**：
 ```python
 python3 -c "
-import feedparser
+import feedparser, time
 from datetime import datetime, timedelta
-cutoff = datetime.now() - timedelta(days=7)
+cutoff = time.mktime((datetime.now() - timedelta(days=7)).timetuple())
 feeds = {{rss_feeds}}
 for url in feeds:
     for e in feedparser.parse(url).entries[:10]:
-        print(f'{e.title} — {e.link}')
+        pub = time.mktime(e.published_parsed) if hasattr(e, 'published_parsed') and e.published_parsed else 0
+        if pub >= cutoff or pub == 0:
+            print(f'{e.title} — {e.link}')
 "
 ```
 → 过滤：只保留 7 天内的文章（按 `published` 字段）
@@ -644,7 +651,13 @@ mcporter call 'xiaohongshu.get_feed_detail(feed_id: "[ID]", xsec_token: "[TOKEN]
 
 ## 环境适配
 
-本 Skill 设计为跨 AI 编辑器运行（Claude Code / Qwen Code / Codex 等）。所有工具调用通过 Bash 命令实现。
+本 Skill 设计为跨 AI 编辑器、跨操作系统运行。
+
+**AI 编辑器兼容**：
+- Claude Code：完整支持（内置 WebSearch + Bash）
+- Qwen Code（通义灵码）：支持（Bash 命令 + Exa 替代 WebSearch）
+- Codex CLI：支持
+- 其他支持 Markdown Skill 的 AI：支持
 
 **网页搜索兼容**：
 - Claude Code 环境：直接使用内置 WebSearch 工具
@@ -656,6 +669,11 @@ mcporter call 'xiaohongshu.get_feed_detail(feed_id: "[ID]", xsec_token: "[TOKEN]
   ```bash
   curl -s "https://s.jina.ai/关键词"
   ```
+
+**操作系统兼容**：
+- macOS / Linux：直接使用 `python3`、`pip3`
+- Windows：Step 0 会自动检测 `python3` 或 `python`、`pip3` 或 `pip`
+- gh CLI 安装：macOS 用 `brew install gh`，Windows 用 `winget install GitHub.cli`
 
 运行时自动检测当前环境能力，选择最佳方案。
 
