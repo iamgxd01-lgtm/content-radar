@@ -1,0 +1,49 @@
+# ========================================
+# 内容雷达配置文件
+# 这个文件由首次运行时的引导自动生成
+# 修改后下次运行自动生效
+# ========================================
+
+# --- 你是谁 ---
+topic: "Claude Code"                        # 你的内容主题（1-3个词）
+role: "Claude Code 场景实战博主"             # 你的博主定位（一句话描述）
+style: "先学后分享，原理藏在场景里"           # 你的创作风格
+
+# --- 你在哪发 ---
+platforms:                                   # 你的发布平台（影响需求侧采集哪些平台）
+  - "小红书"
+  # - "B站"
+  # - "微信公众号"
+  # - "YouTube"
+  # - "Twitter"
+
+# --- 搜什么（英文关键词，用于 Twitter/YouTube/Exa/GitHub 搜索）---
+keywords:
+  - "Claude Code"
+  - "Claude Code MCP"
+  - "Claude Code skill"
+  - "Claude Code agent"
+
+# --- 搜什么（中文关键词，用于 小红书/B站/微信 搜索）---
+keywords_cn:
+  - "Claude Code"
+  - "Claude Code 教程"
+  - "Claude Code 实战"
+  - "Claude Code 技巧"
+
+# --- 选题边界（AI 只推荐这个范围内的选题）---
+scope: "Claude Code 及其生态（MCP、Skill、Agent 模式、子智能体等）"
+
+# --- 重点关注的信息源（可选，AI 会根据你的主题自动推荐）---
+twitter_accounts:
+  - "@anthropaboris"                         # Boris Cherny, Claude Code 作者
+
+rss_feeds:
+  - "https://www.anthropic.com/feed"         # Anthropic 官方博客
+
+# --- 评分偏好（4 个维度，总和 100）---
+scoring:
+  信息差: 35                                 # 别人还没讲过的，权重越高越优先推荐"新"选题
+  受众匹配: 35                               # 你的读者正在关心的，权重越高越贴近热帖
+  可操作性: 20                               # 看完能动手做的，权重越高越偏向实操内容
+  时效性: 10                                 # 越新越好的，权重越高越偏向最新动态
