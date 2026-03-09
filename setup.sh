@@ -111,7 +111,7 @@ echo ""
 
 # ---- Step 4: 创建工作目录 ----
 echo -e "${BOLD}📁 创建工作目录...${NC}"
-mkdir -p ~/.content-radar/cache
+mkdir -p ~/.content-radar/cache/breakdown
 ok "~/.content-radar/ 目录已创建"
 
 # 迁移旧数据（如果存在）
@@ -132,39 +132,56 @@ echo ""
 # ---- Step 5: 安装 Skill 文件 ----
 echo -e "${BOLD}📄 安装 Skill 文件...${NC}"
 
-SKILL_SOURCE="$SCRIPT_DIR/SKILL.md"
-if [ ! -f "$SKILL_SOURCE" ]; then
+SKILL_RADAR="$SCRIPT_DIR/SKILL.md"
+SKILL_BREAKDOWN="$SCRIPT_DIR/BREAKDOWN.md"
+
+if [ ! -f "$SKILL_RADAR" ]; then
   fail "找不到 SKILL.md，请确保在仓库目录中运行此脚本"
   exit 1
 fi
 
 INSTALLED=false
 
+# 安装函数：同时安装两个 Skill
+install_skills() {
+  local skills_dir=$1
+  local editor_name=$2
+
+  mkdir -p "$skills_dir/content-radar"
+  cp "$SKILL_RADAR" "$skills_dir/content-radar/SKILL.md"
+
+  if [ -f "$SKILL_BREAKDOWN" ]; then
+    mkdir -p "$skills_dir/content-breakdown"
+    cp "$SKILL_BREAKDOWN" "$skills_dir/content-breakdown/SKILL.md"
+    ok "已安装到 $editor_name（内容雷达 + 爆款拆解）"
+  else
+    ok "已安装到 $editor_name（内容雷达）"
+  fi
+  INSTALLED=true
+}
+
 # Claude Code
 if [ -d "$HOME/.claude/skills" ]; then
-  mkdir -p "$HOME/.claude/skills/content-radar"
-  cp "$SKILL_SOURCE" "$HOME/.claude/skills/content-radar/SKILL.md"
-  ok "已安装到 Claude Code"
-  INSTALLED=true
+  install_skills "$HOME/.claude/skills" "Claude Code"
 fi
 
 # Qwen Code（通义灵码）— 常见路径
 for qwen_dir in "$HOME/.qwen-code/skills" "$HOME/.tongyi/skills" "$HOME/.qwen/skills"; do
   if [ -d "$qwen_dir" ]; then
-    mkdir -p "$qwen_dir/content-radar"
-    cp "$SKILL_SOURCE" "$qwen_dir/content-radar/SKILL.md"
-    ok "已安装到 Qwen Code ($qwen_dir)"
-    INSTALLED=true
+    install_skills "$qwen_dir" "Qwen Code"
     break
   fi
 done
 
 # 通用安装
-cp "$SKILL_SOURCE" "$HOME/.content-radar/SKILL.md"
+cp "$SKILL_RADAR" "$HOME/.content-radar/SKILL.md"
+if [ -f "$SKILL_BREAKDOWN" ]; then
+  cp "$SKILL_BREAKDOWN" "$HOME/.content-radar/BREAKDOWN.md"
+fi
 if [ "$INSTALLED" = false ]; then
   warn "未检测到已知 AI 编辑器的 skills 目录"
-  info "Skill 文件已放在 ~/.content-radar/SKILL.md"
-  info "请手动将它复制到你的 AI 编辑器的 skills 目录中"
+  info "Skill 文件已放在 ~/.content-radar/"
+  info "请手动将它们复制到你的 AI 编辑器的 skills 目录中"
 fi
 
 # 复制配置示例
@@ -201,9 +218,9 @@ echo ""
 echo -e "${BOLD}🚀 下一步${NC}"
 echo ""
 echo "  1. 打开你的 AI 编辑器（Claude Code / Qwen Code / Codex 等）"
-echo "  2. 输入：内容雷达"
-echo "  3. 首次运行会问你 3 个问题来了解你的定位"
-echo "  4. 之后每次运行，一条命令自动扫描全网找选题"
+echo "  2. 输入 \"内容雷达\" → 全网扫描找选题"
+echo "  3. 输入 \"拆解 [URL]\" → 深度拆解一条爆款内容"
+echo "  4. 首次运行会问你 3 个问题来了解你的定位，之后全自动"
 echo ""
 echo -e "  ${BLUE}遇到问题？${NC}查看 docs/TROUBLESHOOTING.md"
 echo ""
