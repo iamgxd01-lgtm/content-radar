@@ -204,6 +204,27 @@ if [ -f "$SCRIPT_DIR/config/mcporter.json" ]; then
   ok "MCP 配置已复制"
 fi
 
+# ---- Step 4b: 验证 MCP 服务可用性 ----
+if command -v mcporter &>/dev/null; then
+  echo ""
+  echo -e "${BOLD}🔍 验证搜索服务...${NC}"
+
+  # Exa 语义搜索
+  if mcporter call 'exa.web_search_exa(query: "test", numResults: 1)' 2>/dev/null | head -5 | grep -q '"results"'; then
+    ok "Exa 语义搜索 — 可用"
+  else
+    warn "Exa 语义搜索 — 未配置（不影响使用，会用网页搜索替代）"
+  fi
+
+  # 小红书
+  if mcporter call 'xiaohongshu.search_feeds(keyword: "test")' 2>/dev/null | head -5 | grep -q '"feeds"'; then
+    ok "小红书搜索 — 可用"
+  else
+    warn "小红书搜索 — 未配置（不影响使用，会用网页搜索替代）"
+    info "如需启用：参考 docs/TROUBLESHOOTING.md 中的小红书配置说明"
+  fi
+fi
+
 echo ""
 
 # ---- Step 5: 写入安装标记 ----

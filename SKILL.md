@@ -179,14 +179,24 @@ YouTube 和 B站 的数据采集需要读取你的浏览器登录状态。
 
 ### Step 0：工具状态检查（启动时必须执行）
 
-**重要：不要自己拼安装命令。** 只运行下面这段检测脚本即可。
+**重要：不要自己拼安装命令。** 只运行下面这段检测脚本即可。缺少的 Python 包会自动安装。
 
 ```bash
 echo "=== 检测工具状态 ==="
 command -v xreach &>/dev/null && echo "XREACH=OK" || echo "XREACH=MISSING"
 command -v yt-dlp &>/dev/null && echo "YTDLP=OK" || echo "YTDLP=MISSING"
-python3 -c "import feedparser" &>/dev/null && echo "FEEDPARSER=OK" || echo "FEEDPARSER=MISSING"
-python3 -c "import yaml" &>/dev/null && echo "PYYAML=OK" || echo "PYYAML=MISSING"
+# Python 包：检测 + 自动安装（pyyaml 是配置文件硬依赖，必须有）
+for pkg_check in "feedparser:feedparser:FEEDPARSER" "yaml:pyyaml:PYYAML"; do
+  mod="${pkg_check%%:*}"; rest="${pkg_check#*:}"; pip_name="${rest%%:*}"; label="${rest##*:}"
+  if python3 -c "import $mod" &>/dev/null; then
+    echo "${label}=OK"
+  else
+    echo "${label}=MISSING, 正在自动安装..."
+    pip3 install "$pip_name" --user --quiet --break-system-packages 2>/dev/null \
+      || pip3 install "$pip_name" --user --quiet 2>/dev/null
+    python3 -c "import $mod" &>/dev/null && echo "${label}=OK (已自动安装)" || echo "${label}=MISSING (自动安装失败)"
+  fi
+done
 command -v mcporter &>/dev/null && echo "MCPORTER=OK" || echo "MCPORTER=MISSING"
 # mcporter 可用性验证：必须实际调用测试，不能只看 mcporter list（list 有不代表能用）
 if command -v mcporter &>/dev/null; then
@@ -221,7 +231,8 @@ fi
 #### 根据结果处理
 
 - **全部 OK** → 输出状态面板，进入认证引导
-- **有 MISSING** → 告诉用户：`有工具未安装，请先运行 bash setup.sh（在 content-radar 目录下）`，等用户确认后重新检测
+- **PYYAML=MISSING（自动安装也失败）** → 这是硬依赖，告诉用户：`配置文件功能需要 pyyaml，请运行：pip3 install pyyaml`，等用户确认后重新检测
+- **其他工具 MISSING** → 告诉用户：`有工具未安装，请先运行 bash setup.sh（在 content-radar 目录下）`，等用户确认后重新检测
 - **XHS=MISSING 但 MCPORTER=OK** → 小红书 MCP 服务未配置或无法连接。在状态面板中标为 `⚠️ 小红书 — 用网页搜索替代（不影响使用）`，运行时自动降级到 WebSearch
 
 #### 输出状态面板
