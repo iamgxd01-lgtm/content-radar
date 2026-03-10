@@ -69,47 +69,34 @@ install_pip() {
   fi
 }
 
-install_pip "xreach"     "Twitter 搜索工具 (xreach)"
-install_pip "yt-dlp"     "YouTube/B站 搜索工具 (yt-dlp)"
-install_pip "feedparser" "RSS 订阅工具 (feedparser)"
-install_pip "miku-ai"    "微信公众号搜索工具 (miku-ai)"
-install_pip "camoufox"   "网页阅读工具 (camoufox)"
+install_pip "yt-dlp"     "YouTube/B站 搜索 (yt-dlp)"
+install_pip "feedparser" "RSS 订阅 (feedparser)"
+install_pip "camoufox"   "网页阅读 (camoufox)"
 install_pip "pyyaml"     "配置文件解析 (pyyaml)"
 
 echo ""
 
 # ---- Step 2: 安装 Node.js 工具 ----
-echo -e "${BOLD}📦 安装 MCP 工具（Node.js）...${NC}"
-echo -n "  安装 小红书/Exa 搜索工具 (mcporter)..."
-if npm install -g mcporter --silent 2>/dev/null; then
-  echo -e " ${GREEN}✅${NC}"
-else
-  echo -e " ${RED}❌${NC}"
-  FAILED+=("小红书/Exa 搜索工具 (mcporter)")
-fi
+echo -e "${BOLD}📦 安装搜索工具（Node.js）...${NC}"
 
-echo ""
-
-# ---- Step 3: 检查可选工具 ----
-echo -e "${BOLD}🔍 检查可选工具...${NC}"
-
-echo -n "  GitHub CLI (gh)..."
-if command -v gh &>/dev/null; then
-  echo -e " ${GREEN}✅${NC}"
-  if gh auth status &>/dev/null 2>&1; then
-    ok "GitHub 已登录"
+install_npm() {
+  local pkg=$1
+  local display_name=$2
+  echo -n "  安装 ${display_name}..."
+  if npm install -g "$pkg" --silent 2>/dev/null; then
+    echo -e " ${GREEN}✅${NC}"
   else
-    warn "GitHub 未登录，GitHub 搜索会自动用网页搜索替代"
-    info "如需启用：运行 gh auth login"
+    echo -e " ${RED}❌${NC}"
+    FAILED+=("$display_name")
   fi
-else
-  warn "未安装，GitHub 搜索会自动用网页搜索替代"
-  info "如需安装：brew install gh (macOS) 或 参考 https://cli.github.com"
-fi
+}
+
+install_npm "xreach-cli" "Twitter/X 搜索 (xreach)"
+install_npm "mcporter"   "小红书/Exa 搜索 (mcporter)"
 
 echo ""
 
-# ---- Step 4: 创建工作目录 ----
+# ---- Step 3: 创建工作目录 ----
 echo -e "${BOLD}📁 创建工作目录...${NC}"
 mkdir -p ~/.content-radar/cache/breakdown
 ok "~/.content-radar/ 目录已创建"
@@ -129,7 +116,7 @@ fi
 
 echo ""
 
-# ---- Step 5: 安装 Skill 文件 ----
+# ---- Step 4: 安装 Skill 文件 ----
 echo -e "${BOLD}📄 安装 Skill 文件...${NC}"
 
 SKILL_RADAR="$SCRIPT_DIR/SKILL.md"
@@ -198,6 +185,9 @@ fi
 
 echo ""
 
+# ---- Step 5: 写入安装标记 ----
+echo "$( date '+%Y-%m-%d %H:%M' )" > "$HOME/.content-radar/.installed"
+
 # ---- Step 6: 结果汇总 ----
 echo "=========================================="
 
@@ -233,10 +223,6 @@ echo "    运行：mcporter"
 echo "    说明：需要在单独的终端窗口运行，保持不关闭"
 echo "    首次运行会提示扫码登录小红书"
 echo ""
-echo -e "  ${BOLD}GitHub${NC}（获取开源项目动态）"
-echo "    运行：gh auth login"
-echo "    效果：按提示选择 GitHub.com → 浏览器登录"
-echo ""
 echo -e "  ${BLUE}以上全部可选。${NC}想认证哪个就认证哪个，其余的自动降级。"
 echo ""
 echo "=========================================="
@@ -251,13 +237,11 @@ echo "  5. 首次运行会问你 3 个问题来了解你的定位，之后全自
 echo ""
 echo -e "${BOLD}📢 本版亮点${NC}"
 echo ""
-echo "  ✨ 工具缺失自动安装（不需要手动装）"
-echo "  ✨ 启动时显示工具状态面板（一眼看清哪些可用）"
+echo "  ✨ 一键安装，AI 不再需要临场拼装命令"
 echo "  ✨ 每条数据标注信源质量（🟢一手 / 🟡二手 / 🔴降级）"
 echo "  ✨ 选题标注时效性（🔥24h / 📅本周 / 📦更早）"
 echo "  ✨ 新增批量拆解（\"批量拆解 URL1 URL2\"）"
 echo "  ✨ 新增素材提取（\"提取素材 URL\"）"
-echo "  ✨ 新增抖音渠道"
 echo "  ✨ 评分维度可自定义（不限于默认四维）"
 echo ""
 echo -e "  ${BLUE}遇到问题？${NC}查看 docs/TROUBLESHOOTING.md"
