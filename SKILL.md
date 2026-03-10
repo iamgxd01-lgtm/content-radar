@@ -37,6 +37,7 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 | `keywords_cn` | 中文搜索关键词 | ✅ | ["Claude Code 教程", "Claude Code 实战"] |
 | `scope` | 选题边界 | ✅ | "Claude Code 及其生态" |
 | `scoring` | 评分维度和权重（总和 100） | ✅ | {信息差: 30, 受众匹配: 30, 可操作性: 20, 时效性: 20} |
+| `browser` | 用户常用浏览器 | ✅ | "chrome" |
 | `twitter_accounts` | 重点关注的 Twitter 账号 | 可选 | ["@anthropaboris"] |
 | `follow_list` | 关注圈创作者（行业风向标） | 可选 | {twitter: ["@alexalbert__"], youtube: ["Fireship"], bilibili: ["AIGCLINK"], xiaohongshu: ["用户ID"]} |
 | `breaking_keywords` | 破圈雷达泛化关键词 | 可选 | ["AI agent", "vibe coding"] |
@@ -72,16 +73,20 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 - `breaking_keywords`：AI 根据主题生成 2-3 个泛化关键词（比主题更宽的领域词）
 - `rss_feeds`：AI 根据主题推荐 1-2 个官方/权威 RSS 源
 
-### Q2："你主要在哪里发布内容？（可多选）"
+### Q2："你主要在哪些平台发布内容？（输入编号，多选用逗号隔开）"
 
-选项：
-- A) 小红书
-- B) B站
-- C) 微信公众号
-- D) 抖音
-- E) YouTube
-- F) Twitter/X
-- G) 其他：___
+**必须按以下格式展示，禁止归纳分类或合并选项**：
+```
+1. 小红书
+2. B站
+3. 微信公众号
+4. 抖音
+5. YouTube
+6. Twitter/X
+7. 其他（请输入平台名）
+
+示例：输入 1,2 表示选"小红书"和"B站"
+```
 
 → 生成 `platforms`（决定 Step 2 需求侧采集哪些平台）
 
@@ -95,6 +100,38 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 - E) 其他：___
 
 → 生成 `role`、`style`
+
+### Q4："你在这个领域关注了哪些博主/创作者？（可选，直接回车跳过）"
+
+**展示话术**：
+```
+关注的博主是你的"行业雷达"——他们在聊什么，往往就是下一个热点。
+告诉我你关注的几个创作者，我帮你追踪他们的最新动态。
+
+格式：平台+名字，多个用逗号隔开
+示例：Twitter @alexalbert__, B站 AIGCLINK, YouTube Fireship
+
+直接回车跳过，以后可以在配置文件中添加。
+```
+
+→ 生成 `follow_list`（按平台分组）
+→ 如果用户跳过，AI 根据 Q1 的主题自动推荐 3-5 个知名创作者，让用户确认
+
+### Q5："你常用什么浏览器？"
+
+**展示话术**：
+```
+YouTube 和 B站 的数据采集需要读取你的浏览器登录状态。
+你平时主要用哪个浏览器？
+
+1. Chrome（谷歌浏览器）
+2. Edge（微软浏览器）
+3. Safari（苹果浏览器）
+4. Firefox
+5. 其他
+```
+
+→ 生成 `browser`（用于 yt-dlp 的 `--cookies-from-browser` 参数）
 
 ### 自动生成（不问用户）
 
@@ -144,33 +181,49 @@ command -v xreach &>/dev/null && echo "XREACH=OK" || echo "XREACH=MISSING"
 command -v yt-dlp &>/dev/null && echo "YTDLP=OK" || echo "YTDLP=MISSING"
 python3 -c "import feedparser" &>/dev/null && echo "FEEDPARSER=OK" || echo "FEEDPARSER=MISSING"
 python3 -c "import yaml" &>/dev/null && echo "PYYAML=OK" || echo "PYYAML=MISSING"
-python3 -c "import camoufox" &>/dev/null && echo "CAMOUFOX=OK" || echo "CAMOUFOX=MISSING"
 command -v mcporter &>/dev/null && echo "MCPORTER=OK" || echo "MCPORTER=MISSING"
-curl -sf -o /dev/null http://localhost:18060/ && echo "MCP_SERVICE=OK" || echo "MCP_SERVICE=MISSING"
+# mcporter 可用性验证：直接调用 CLI（mcporter 是命令行工具，不是 HTTP 服务）
+if command -v mcporter &>/dev/null; then
+  mcporter call 'exa.web_search_exa(query: "test", numResults: 1)' &>/dev/null && echo "EXA=OK" || echo "EXA=MISSING"
+  mcporter list 2>/dev/null | grep -q "xiaohongshu" && echo "XHS=OK" || echo "XHS=MISSING"
+else
+  echo "EXA=MISSING"
+  echo "XHS=MISSING"
+fi
 ```
+
+> **重要**：mcporter 是命令行工具（CLI），直接用 `mcporter call` 调用即可，**不需要启动 HTTP 服务，不需要检查 localhost 端口**。
 
 #### 根据结果处理
 
 - **全部 OK** → 输出状态面板，进入认证引导
 - **有 MISSING** → 告诉用户：`有工具未安装，请先运行 bash setup.sh（在 content-radar 目录下）`，等用户确认后重新检测
-- **MCP_SERVICE=MISSING 但 MCPORTER=OK** → 提示用户：`请在另一个终端窗口运行 mcporter 并保持不关闭`
+- **XHS=MISSING 但 MCPORTER=OK** → 小红书 MCP 服务未配置。复制配置文件：
+```bash
+cp ~/.content-radar/mcporter.json ~/.mcporter/mcporter.json 2>/dev/null || echo "配置文件不存在，请重新运行 setup.sh"
+```
 
 #### 输出状态面板
 
-用**功能名**（不用工具名），让非技术用户也能看懂：
+**禁止输出技术格式（如 XREACH=OK）。** 必须用以下小白友好格式：
 
 ```
 📡 内容雷达启动
 
-=== 工具状态 ===
-✅ Twitter/X 搜索 — 已安装
-✅ YouTube/B站 搜索 — 已安装
-✅ RSS 订阅 — 已安装
-✅ 小红书/Exa 搜索 — 已安装
-✅ 网页阅读 — 已安装
-⚠️ 微信公众号 — 将使用网页搜索替代
-⚠️ 抖音 — 将使用网页搜索替代
+=== 搜索能力 ===
+✅ Twitter/X — 可以搜到实时讨论
+✅ YouTube — 可以搜到视频教程
+✅ B站 — 可以搜到中文视频
+✅ 小红书 — 可以搜到图文笔记
+✅ RSS/博客 — 可以追踪官方动态
+✅ Exa — 可以做精准语义搜索
+⚠️ 微信公众号 — 用网页搜索替代（不影响使用）
+⚠️ 抖音 — 用网页搜索替代（不影响使用）
+
+🔋 数据完整度：高（6/8 渠道可用）
 ```
+
+> **⚠️ 标注的渠道必须说明"不影响使用"**，避免小白用户以为出了问题。
 
 #### 认证引导（检测后、采集前执行）
 
@@ -180,9 +233,9 @@ curl -sf -o /dev/null http://localhost:18060/ && echo "MCP_SERVICE=OK" || echo "
 ```bash
 # Twitter/X 认证
 xreach search "test" -n 1 --json 2>/dev/null && echo "XREACH_AUTH=OK" || echo "XREACH_AUTH=MISSING"
-# 小红书 MCP 服务
-curl -sf -o /dev/null http://localhost:18060/ && echo "XHS_AUTH=OK" || echo "XHS_AUTH=MISSING"
-# YouTube/B站 靠 Chrome 登录状态，无法检测，默认提示
+# 小红书（mcporter CLI 直接调用，不需要 HTTP 服务）
+mcporter call 'xiaohongshu.search_feeds(keyword: "test")' 2>/dev/null && echo "XHS_AUTH=OK" || echo "XHS_AUTH=MISSING"
+# YouTube/B站 靠浏览器登录状态，无法程序化检测，引导用户确认
 ```
 
 **引导规则**：
@@ -206,7 +259,7 @@ curl -sf -o /dev/null http://localhost:18060/ && echo "XHS_AUTH=OK" || echo "XHS
 
 3️⃣ YouTube / B站
    登录后能获取视频字幕和评论，分析更深入。
-   👉 只需确认你的 Chrome 浏览器已登录 YouTube / B站 账号即可。
+   👉 只需确认你常用的浏览器（配置中选的那个）已登录 YouTube / B站 账号即可。
 
 💡 不登录也完全能用！未登录的渠道会自动用网页搜索替代。
    输入"跳过"直接开始扫描，以后随时可以补登录。
@@ -260,18 +313,20 @@ mcporter call 'exa.web_search_exa(query: "site:x.com {{keywords[0]}}", numResult
 
 **yt-dlp ✅ 可用时**：
 ```bash
-yt-dlp --cookies-from-browser chrome --dump-json "ytsearch5:{{keywords[0]}} tutorial this week"
-yt-dlp --cookies-from-browser chrome --dump-json "ytsearch5:{{keywords[1]}} {{当前年份}}"
+yt-dlp --cookies-from-browser {{browser}} --dump-json "ytsearch5:{{keywords[0]}} tutorial this week" | jq '{title, description, tags, upload_date, view_count, like_count, comment_count, channel, channel_follower_count, webpage_url}'
+yt-dlp --cookies-from-browser {{browser}} --dump-json "ytsearch5:{{keywords[1]}} {{当前年份}}" | jq '{title, description, tags, upload_date, view_count, like_count, comment_count, channel, channel_follower_count, webpage_url}'
 ```
 → 过滤：只保留 7 天内的视频（按 `upload_date` 字段）
 → 标注：🟢 一手数据
+
+> **重要**：必须用 `| jq '{...}'` 过滤输出，只提取关键字段。yt-dlp 原始 JSON 包含大量字幕 URL 和格式信息（几百行），会吃掉 AI 的上下文窗口。选题发现阶段不需要字幕，只需要元数据。
 
 **yt-dlp ❌ 不可用时**：
 → WebSearch `"youtube.com {{keywords[0]}} tutorial {{当前年月}}"`
 → 标注：🔴 降级数据
 
-> YouTube 反爬严格，必须加 `--cookies-from-browser chrome` 绕过机器人验证。
-> 发现高价值视频时，可用 `yt-dlp --cookies-from-browser chrome --write-auto-sub` 提取字幕做深度分析。
+> YouTube 反爬严格，必须加 `--cookies-from-browser {{browser}}` 绕过机器人验证。`{{browser}}` 取自配置文件中用户选择的浏览器。
+> 爆款拆解阶段（非本 Skill）才需要字幕，用 `yt-dlp --cookies-from-browser {{browser}} --write-auto-sub` 提取。
 
 #### 1d. 微信公众号 — 国内深度文章
 
@@ -332,14 +387,14 @@ xreach tweets {{follow_list.twitter[1]}} -n 5 --json
 
 **YouTube 关注圈**（`follow_list.youtube` 中的频道）：
 ```bash
-yt-dlp --cookies-from-browser chrome --dump-json --playlist-items 1:3 "https://www.youtube.com/@{{频道名}}/videos"
+yt-dlp --cookies-from-browser {{browser}} --dump-json --playlist-items 1:3 "https://www.youtube.com/@{{频道名}}/videos" | jq '{title, description, tags, upload_date, view_count, like_count, comment_count, channel, channel_follower_count, webpage_url}'
 ```
 → 过滤：只保留 7 天内的视频
 → 标注：🟢 一手数据 + 📌 关注圈
 
 **B站关注圈**（`follow_list.bilibili` 中的 UP 主）：
 ```bash
-yt-dlp --cookies-from-browser chrome --dump-json --playlist-items 1:3 "https://space.bilibili.com/{{UID}}/video"
+yt-dlp --cookies-from-browser {{browser}} --dump-json --playlist-items 1:3 "https://space.bilibili.com/{{UID}}/video" | jq '{title, description, upload_date, view_count, like_count, comment_count, uploader, webpage_url}'
 ```
 → 过滤：只保留 7 天内的视频
 → 标注：🟢 一手数据 + 📌 关注圈
@@ -428,18 +483,26 @@ mcporter call 'xiaohongshu.search_feeds(keyword: "{{keywords_cn[2]}}", filters: 
 
 #### 2b. B站（当 platforms 包含"B站"时采集）
 
-**yt-dlp ✅ 可用时**：
+> **重要**：B站搜索 API 反爬极严（`bilisearch` 几乎必定 HTTP 412），**不要用 `yt-dlp bilisearch`**。使用以下两步法：
+
+**第一步：用 Jina Reader 搜索 B站页面**（获取标题、播放量、BV号链接）
 ```bash
-yt-dlp --cookies-from-browser chrome --dump-json "bilisearch5:{{keywords_cn[0]}}"
-yt-dlp --cookies-from-browser chrome --dump-json "bilisearch5:{{keywords_cn[1]}}"
+curl -s "https://r.jina.ai/https://search.bilibili.com/all?keyword={{keywords_cn[0]}}" | head -100
+curl -s "https://r.jina.ai/https://search.bilibili.com/all?keyword={{keywords_cn[1]}}" | head -100
+```
+→ 从返回结果中提取 BV 号链接、标题、播放量
+→ 标注：🟡 二手数据
+
+**第二步：用 yt-dlp 获取详细信息**（上传日期、UP主、评论数）
+```bash
+# 对第一步找到的前 5 个 BV 号，逐一获取详情
+yt-dlp --cookies-from-browser {{browser}} --dump-json "https://www.bilibili.com/video/BVxxx" | jq '{title, description, upload_date, view_count, like_count, comment_count, uploader, webpage_url}'
 ```
 → 标注：🟢 一手数据
 
-**yt-dlp ❌ 不可用时**：
+**降级**（Jina 也不可用时）：
 → WebSearch `"bilibili.com {{keywords_cn[0]}} {{当前年月}}"`
 → 标注：🔴 降级数据
-
-> B站也有反爬（HTTP 412），加 `--cookies-from-browser chrome` 绕过。
 
 #### 2c. 微信公众号（当 platforms 包含"微信公众号"时采集）
 
@@ -722,10 +785,12 @@ mcporter call 'xiaohongshu.get_feed_detail(feed_id: "[ID]", xsec_token: "[TOKEN]
 - [帖子标题](平台链接) 🟢 🔥 3h前 👍N — 差距：[现有帖子缺什么]
 
 **📚 学习材料**（每条附原始 URL，来源越多元越好）：
-- 🐦 [推文摘要](https://x.com/用户名/status/ID) — @用户名, N likes
-- 🎬 [视频标题](https://www.youtube.com/watch?v=xxx) — 频道名, N views
-- 📄 [文章标题](URL) — 来源站点
-- 💻 [仓库名](https://github.com/用户/仓库) — ⭐N stars
+- 🟢 🐦 [推文摘要](https://x.com/用户名/status/ID) — @用户名, N likes
+- 🟢 🎬 [视频标题](https://www.youtube.com/watch?v=xxx) — 频道名, N views
+- 🔴 📄 [文章标题](URL) — 来源站点（网页搜索）
+- 🟢 💻 [仓库名](https://github.com/用户/仓库) — ⭐N stars
+
+> **重要**：降级渠道（🔴）的搜索结果也必须出现在学习材料中，标注来源方式。不能因为渠道降级就省略结果。
 
 **🎬 操作建议**：
 1. [具体操作场景1]
