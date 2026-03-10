@@ -53,7 +53,9 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 
 ## 首次配置引导
 
-当 `~/.content-radar/my-radar.yaml` 不存在时，通过 3 个问题完成配置。用对话方式逐个提问。
+当 `~/.content-radar/my-radar.yaml` 不存在时，通过 5 个问题完成配置。
+
+**禁止一次展示多个问题。必须一个一个问：展示 Q1 → 等用户回答 → 再展示 Q2 → 等用户回答 → 依此类推。每次只展示一个问题。**
 
 ### Q1："你平时主要分享哪个领域的内容？"
 
@@ -158,7 +160,7 @@ YouTube 和 B站 的数据采集需要读取你的浏览器登录状态。
 配置已保存到 ~/.content-radar/my-radar.yaml
 以后可以直接编辑这个文件调整关键词、信息源和评分权重。
 ```
-2. 写入 `~/.content-radar/my-radar.yaml`
+2. 写入 `~/.content-radar/my-radar.yaml`（**YAML 格式要求：所有冒号必须用英文半角 `:`，禁止用中文全角 `：`**）
 3. 继续执行选题分析
 
 ---
@@ -239,6 +241,8 @@ fi
 
 **禁止输出技术格式（如 XREACH=OK）。** 必须用以下小白友好格式：
 
+**状态面板只反映工具是否可用（Step 0 检测结果），禁止根据话题/关键词判断"有没有内容"。** 工具能用就标 ✅，不能用就标 ⚠️。具体能不能搜到内容是 Step 1 采集阶段的事，和状态面板无关。
+
 ```
 📡 内容雷达启动
 
@@ -256,6 +260,7 @@ fi
 ```
 
 > **⚠️ 标注的渠道必须说明"不影响使用"**，避免小白用户以为出了问题。
+> **禁止在状态面板中对话题做预判**（如"太新"、"中文产品"等）。工具可用 = ✅，就这么简单。
 
 #### 认证引导（检测后、采集前执行）
 
@@ -502,7 +507,9 @@ curl -s "https://s.jina.ai/{{keywords[0]}}%20latest%20{{当前年月}}"
 
 #### 2a. 小红书（当 platforms 包含"小红书"时采集）
 
-**mcporter ✅ 可用时**：
+> **禁止自行判断小红书是否可用。** 必须以 Step 0 检测结果（XHS=OK / XHS=MISSING）为准。如果 Step 0 检测为 XHS=OK，就必须执行下面的 mcporter 命令，禁止跳过或自行降级。禁止编造"内测阶段"、"需要申请权限"等不存在的限制。
+
+**mcporter ✅ 可用时（Step 0 检测 XHS=OK）**：
 ```bash
 mcporter call 'xiaohongshu.search_feeds(keyword: "{{keywords_cn[0]}}", filters: {sort_by: "最多点赞"})'
 mcporter call 'xiaohongshu.search_feeds(keyword: "{{keywords_cn[1]}}", filters: {sort_by: "最多点赞"})'
@@ -510,7 +517,7 @@ mcporter call 'xiaohongshu.search_feeds(keyword: "{{keywords_cn[2]}}", filters: 
 ```
 → 标注：🟢 一手数据
 
-**mcporter ❌ 不可用时**：
+**mcporter ❌ 不可用时（Step 0 检测 XHS=MISSING）**：
 → curl 直接驱动 MCP 协议（见附录）
 → 仍然失败时：WebSearch `"xiaohongshu.com {{keywords_cn[0]}}"`
 → 标注：🔴 降级数据
