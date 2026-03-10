@@ -61,19 +61,17 @@ install_pip() {
   local pkg=$1
   local display_name=$2
   echo -n "  安装 ${display_name}..."
-  # 先正常尝试
-  if pip3 install "$pkg" --user --quiet 2>/dev/null; then
+  # 逐层重试：正常 → 跳过 SSL → 允许系统包覆盖 → 全部放开
+  pip3 install "$pkg" --user --quiet 2>/dev/null \
+    || pip3 install "$pkg" --user --quiet --trusted-host pypi.org --trusted-host files.pythonhosted.org 2>/dev/null \
+    || pip3 install "$pkg" --user --quiet --break-system-packages 2>/dev/null \
+    || pip3 install "$pkg" --user --quiet --break-system-packages --trusted-host pypi.org --trusted-host files.pythonhosted.org 2>/dev/null
+  if [ $? -eq 0 ]; then
     echo -e " ${GREEN}✅${NC}"
-    return
+  else
+    echo -e " ${RED}❌${NC}"
+    FAILED+=("$display_name")
   fi
-  # 失败了，可能是 SSL 问题，自动跳过证书验证重试
-  if pip3 install "$pkg" --user --quiet --trusted-host pypi.org --trusted-host files.pythonhosted.org 2>/dev/null; then
-    echo -e " ${GREEN}✅${NC}"
-    return
-  fi
-  # 都失败了
-  echo -e " ${RED}❌${NC}"
-  FAILED+=("$display_name")
 }
 
 install_pip "yt-dlp"     "YouTube/B站 搜索 (yt-dlp)"
