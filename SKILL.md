@@ -38,6 +38,7 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 | `scope` | 选题边界 | ✅ | "Claude Code 及其生态" |
 | `scoring` | 评分维度和权重（总和 100） | ✅ | {信息差: 30, 受众匹配: 30, 可操作性: 20, 时效性: 20} |
 | `browser` | 用户常用浏览器 | ✅ | "chrome" |
+| `proxy` | 代理地址（Step 0 自动检测写入） | 自动 | "http://127.0.0.1:7890" |
 | `twitter_accounts` | 重点关注的 Twitter 账号 | 可选 | ["@anthropaboris"] |
 | `follow_list` | 关注圈创作者（行业风向标） | 可选 | {twitter: ["@alexalbert__"], youtube: ["Fireship"], bilibili: ["AIGCLINK"], xiaohongshu: ["用户ID"]} |
 | `breaking_keywords` | 破圈雷达泛化关键词 | 可选 | ["AI agent", "vibe coding"] |
@@ -90,14 +91,19 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 
 → 生成 `platforms`（决定 Step 2 需求侧采集哪些平台）
 
-### Q3："你通常怎么创作内容？"
+### Q3："你通常怎么创作内容？（输入编号，多选用逗号隔开）"
 
-选项：
-- A) 先学后分享——自己先学会，再教给别人
-- B) 实时踩坑——边做边记录，展示真实过程
-- C) 资讯整理——汇总最新动态，帮读者省时间
-- D) 深度测评——深入对比分析，给出推荐
-- E) 其他：___
+**必须按以下格式展示，禁止改写或合并选项**：
+
+```
+1. 先学后分享——自己先学会，再教给别人
+2. 实时踩坑——边做边记录，展示真实过程
+3. 资讯整理——汇总最新动态，帮读者省时间
+4. 深度测评——深入对比分析，给出推荐
+5. 其他（请输入你的创作方式）
+
+示例：输入 1,2 表示选"先学后分享"和"实时踩坑"
+```
 
 → 生成 `role`、`style`
 
@@ -182,10 +188,10 @@ command -v yt-dlp &>/dev/null && echo "YTDLP=OK" || echo "YTDLP=MISSING"
 python3 -c "import feedparser" &>/dev/null && echo "FEEDPARSER=OK" || echo "FEEDPARSER=MISSING"
 python3 -c "import yaml" &>/dev/null && echo "PYYAML=OK" || echo "PYYAML=MISSING"
 command -v mcporter &>/dev/null && echo "MCPORTER=OK" || echo "MCPORTER=MISSING"
-# mcporter 可用性验证：直接调用 CLI（mcporter 是命令行工具，不是 HTTP 服务）
+# mcporter 可用性验证：必须实际调用测试，不能只看 mcporter list（list 有不代表能用）
 if command -v mcporter &>/dev/null; then
-  mcporter call 'exa.web_search_exa(query: "test", numResults: 1)' &>/dev/null && echo "EXA=OK" || echo "EXA=MISSING"
-  mcporter list 2>/dev/null | grep -q "xiaohongshu" && echo "XHS=OK" || echo "XHS=MISSING"
+  mcporter call 'exa.web_search_exa(query: "test", numResults: 1)' 2>/dev/null | head -5 | grep -q '"results"' && echo "EXA=OK" || echo "EXA=MISSING"
+  mcporter call 'xiaohongshu.search_feeds(keyword: "test")' 2>/dev/null | head -5 | grep -q '"feeds"' && echo "XHS=OK" || echo "XHS=MISSING"
 else
   echo "EXA=MISSING"
   echo "XHS=MISSING"
@@ -194,14 +200,29 @@ fi
 
 > **重要**：mcporter 是命令行工具（CLI），直接用 `mcporter call` 调用即可，**不需要启动 HTTP 服务，不需要检查 localhost 端口**。
 
+#### 代理自动检测
+
+xreach 需要代理才能访问 Twitter。**不要问用户代理地址**，自动从环境变量检测：
+
+```bash
+# 检测系统代理（按优先级）
+PROXY="${HTTPS_PROXY:-${HTTP_PROXY:-${ALL_PROXY:-}}}"
+if [ -n "$PROXY" ]; then
+  echo "PROXY=$PROXY"
+else
+  echo "PROXY=NONE"
+fi
+```
+
+- **检测到代理**：所有 xreach 命令自动加 `--proxy $PROXY`
+- **未检测到代理**：先不加 proxy 直接调用；如果 xreach 报 TLS/网络错误，尝试常见代理端口（`http://127.0.0.1:7890`、`http://127.0.0.1:7897`、`http://127.0.0.1:1080`）；都失败则降级到 WebSearch
+- **将检测到的可用代理写入配置文件** `proxy` 字段，后续无需再检测
+
 #### 根据结果处理
 
 - **全部 OK** → 输出状态面板，进入认证引导
 - **有 MISSING** → 告诉用户：`有工具未安装，请先运行 bash setup.sh（在 content-radar 目录下）`，等用户确认后重新检测
-- **XHS=MISSING 但 MCPORTER=OK** → 小红书 MCP 服务未配置。复制配置文件：
-```bash
-cp ~/.content-radar/mcporter.json ~/.mcporter/mcporter.json 2>/dev/null || echo "配置文件不存在，请重新运行 setup.sh"
-```
+- **XHS=MISSING 但 MCPORTER=OK** → 小红书 MCP 服务未配置或无法连接。在状态面板中标为 `⚠️ 小红书 — 用网页搜索替代（不影响使用）`，运行时自动降级到 WebSearch
 
 #### 输出状态面板
 
@@ -231,8 +252,8 @@ cp ~/.content-radar/mcporter.json ~/.mcporter/mcporter.json 2>/dev/null || echo 
 
 检测认证状态的脚本：
 ```bash
-# Twitter/X 认证
-xreach search "test" -n 1 --json 2>/dev/null && echo "XREACH_AUTH=OK" || echo "XREACH_AUTH=MISSING"
+# Twitter/X 认证（使用 Step 0 检测到的 proxy）
+xreach search "test" -n 1 --json {{proxy ? '--proxy ' + proxy : ''}} 2>/dev/null && echo "XREACH_AUTH=OK" || echo "XREACH_AUTH=MISSING"
 # 小红书（mcporter CLI 直接调用，不需要 HTTP 服务）
 mcporter call 'xiaohongshu.search_feeds(keyword: "test")' 2>/dev/null && echo "XHS_AUTH=OK" || echo "XHS_AUTH=MISSING"
 # YouTube/B站 靠浏览器登录状态，无法程序化检测，引导用户确认
@@ -286,10 +307,13 @@ mcporter call 'xiaohongshu.search_feeds(keyword: "test")' 2>/dev/null && echo "X
 #### 1a. Twitter/X — 一手讨论（最高优先级）
 
 **xreach ✅ 可用时**：
+
+> 如果配置了 `proxy`，所有 xreach 命令加 `--proxy {{proxy}}`。proxy 由 Step 0 自动检测写入配置。
+
 ```bash
-xreach search "{{keywords[0]}}" -n 15 --json --sort latest
-xreach search "{{keywords[1]}} OR {{keywords[2]}}" -n 10 --json --sort latest
-xreach tweets {{twitter_accounts[0]}} -n 10 --json
+xreach search "{{keywords[0]}}" -n 15 --json {{proxy ? '--proxy ' + proxy : ''}}
+xreach search "{{keywords[1]}} OR {{keywords[2]}}" -n 10 --json {{proxy ? '--proxy ' + proxy : ''}}
+xreach tweets {{twitter_accounts[0]}} -n 10 --json {{proxy ? '--proxy ' + proxy : ''}}
 ```
 → 过滤：只保留 48h 内的推文（按 `created_at` 字段）
 → 标注：🟢 一手数据
@@ -378,9 +402,9 @@ mcporter call 'exa.web_search_exa(query: "{{keywords[1]}} {{keywords[2]}}", numR
 
 **Twitter 关注圈**（`follow_list.twitter` 中的账号）：
 ```bash
-# 遍历每个关注账号，获取最近推文
-xreach tweets {{follow_list.twitter[0]}} -n 5 --json
-xreach tweets {{follow_list.twitter[1]}} -n 5 --json
+# 遍历每个关注账号，获取最近推文（配置了 proxy 时加 --proxy）
+xreach tweets {{follow_list.twitter[0]}} -n 5 --json {{proxy ? '--proxy ' + proxy : ''}}
+xreach tweets {{follow_list.twitter[1]}} -n 5 --json {{proxy ? '--proxy ' + proxy : ''}}
 ```
 → 过滤：只保留 7 天内的推文
 → 标注：🟢 一手数据 + 📌 关注圈
@@ -448,13 +472,14 @@ curl -s "https://s.jina.ai/{{keywords[0]}}%20latest%20{{当前年月}}"
 
 → 标注：🔴 降级数据
 
-**⚠️ 采集时必须保留原始 URL**：
-- Twitter 推文：保留 `https://x.com/用户名/status/推文ID`（xreach --json 输出中的 URL 字段）
-- YouTube 视频：保留 `https://www.youtube.com/watch?v=视频ID`（yt-dlp --dump-json 输出中的 webpage_url 字段）
-- B站视频：保留 `https://www.bilibili.com/video/BVxxx`（yt-dlp --dump-json 输出中的 webpage_url 字段）
-- GitHub 仓库：保留 `https://github.com/用户/仓库`（来自 WebSearch）
+**⚠️ 采集时必须保留或构造完整 URL**（最终输出中每条内容都必须有可点击链接）：
+- Twitter 推文：`https://x.com/用户名/status/推文ID`（xreach --json 输出中的 URL 字段）
+- YouTube 视频：`https://www.youtube.com/watch?v=视频ID`（yt-dlp 输出中的 webpage_url 字段）
+- B站视频：`https://www.bilibili.com/video/BV号`（yt-dlp 输出中的 webpage_url 字段；或从 Jina Reader 结果中提取 BV 号后拼接）
+- 小红书笔记：`https://www.xiaohongshu.com/explore/笔记ID`（mcporter 返回的 id 字段拼接）
+- GitHub 仓库：`https://github.com/用户/仓库`（来自 WebSearch）
 - Exa/WebSearch 文章：保留原文 URL
-- 这些 URL 将在 Step 5 的输出中作为「学习材料」的可点击链接
+- **没有 URL 的内容不允许出现在最终报告中**
 
 **输出物** → `~/.content-radar/cache/daily-digest.md`（标注每条信息的来源平台 + 原始 URL + 信源质量标签）
 
@@ -485,12 +510,17 @@ mcporter call 'xiaohongshu.search_feeds(keyword: "{{keywords_cn[2]}}", filters: 
 
 > **重要**：B站搜索 API 反爬极严（`bilisearch` 几乎必定 HTTP 412），**不要用 `yt-dlp bilisearch`**。使用以下两步法：
 
-**第一步：用 Jina Reader 搜索 B站页面**（获取标题、播放量、BV号链接）
+**第一步：用 Jina Reader 读取 B站搜索结果页**（获取标题、播放量、BV号链接）
+
+> **⚠️ 必须用 B站搜索页 URL，不要用具体视频页 URL。** 格式固定为 `https://search.bilibili.com/all?keyword=关键词`。
+
 ```bash
+# URL 中的关键词需要 URL 编码（中文关键词用 --data-urlencode 或手动编码）
 curl -s "https://r.jina.ai/https://search.bilibili.com/all?keyword={{keywords_cn[0]}}" | head -100
 curl -s "https://r.jina.ai/https://search.bilibili.com/all?keyword={{keywords_cn[1]}}" | head -100
 ```
-→ 从返回结果中提取 BV 号链接、标题、播放量
+→ 从返回结果中提取 BV 号（格式如 BVxxxxxxx）、标题、播放量
+→ 构造完整链接：`https://www.bilibili.com/video/{BV号}`
 → 标注：🟡 二手数据
 
 **第二步：用 yt-dlp 获取详细信息**（上传日期、UP主、评论数）
@@ -687,6 +717,12 @@ mcporter call 'xiaohongshu.get_feed_detail(feed_id: "[ID]", xsec_token: "[TOKEN]
 
 ### Step 5：输出候选选题
 
+**⚠️ 输出前自检（必须执行）**：
+1. 每条热帖证据是否都有 `[标题](完整URL)` 格式的可点击链接？
+2. 每条学习材料是否都有 `[描述](完整URL)` 格式的链接？
+3. 破圈机会中的每个项目是否都有完整链接（不能只写 BV 号或笔记 ID）？
+4. **缺少链接的内容不允许出现在最终报告中**——删除或补充链接后再输出。
+
 生成 `~/.content-radar/cache/topic-candidates.md`，格式要求：
 
 1. **选题围绕 `{topic}` 及 `{scope}`**
@@ -742,13 +778,19 @@ mcporter call 'xiaohongshu.get_feed_detail(feed_id: "[ID]", xsec_token: "[TOKEN]
 ## 📡 {topic} 内容雷达 — [日期]
 
 === 采集状况 ===
-🟢 直连：[渠道1] ✅ | [渠道2] ✅
+🟢 直连：[渠道1] ✅ | [渠道2] ✅（无相关结果）
 🔴 降级：[渠道3] → 网页搜索
 ❌ 跳过：[渠道4]（未配置）
 
 数据完整度：🟢 高（N/M 渠道直连） 或 🟡 中等 或 🔴 较低
 时效覆盖：🔥 找到 N 条 24h 内内容
 ```
+
+> **标注规则**：
+> - 🟢 直连 = 工具可用且成功调用（即使返回结果为空，仍标 🟢，可注明"无相关结果"）
+> - 🔴 降级 = 工具不可用，使用了 WebSearch/Jina 替代
+> - ❌ 跳过 = 用户未配置该平台
+> - **"工具可用但搜不到内容"≠ 降级**，不要混淆
 
 > **如果所有社交媒体渠道都降级了**，在此处增加警告：
 > `⚠️ 注意：所有社交媒体渠道均为降级搜索，无法获取精确的实时热点数据。以下选题基于新闻站和网页搜索，建议安装 xreach/mcporter 获取更准确的数据。`
@@ -787,6 +829,8 @@ mcporter call 'xiaohongshu.get_feed_detail(feed_id: "[ID]", xsec_token: "[TOKEN]
 **📚 学习材料**（每条附原始 URL，来源越多元越好）：
 - 🟢 🐦 [推文摘要](https://x.com/用户名/status/ID) — @用户名, N likes
 - 🟢 🎬 [视频标题](https://www.youtube.com/watch?v=xxx) — 频道名, N views
+- 🟢 📺 [B站视频标题](https://www.bilibili.com/video/BVxxx) — UP主, N 播放
+- 🟢 📕 [小红书笔记标题](https://www.xiaohongshu.com/explore/笔记ID) — @博主, 👍N
 - 🔴 📄 [文章标题](URL) — 来源站点（网页搜索）
 - 🟢 💻 [仓库名](https://github.com/用户/仓库) — ⭐N stars
 
@@ -806,11 +850,12 @@ mcporter call 'xiaohongshu.get_feed_detail(feed_id: "[ID]", xsec_token: "[TOKEN]
 
 以下热点不在你的核心领域，但可能有跨界选题机会：
 
-- **[热点标题](URL)** — 来自 [泛化领域]
+- **[热点标题](完整URL)** — 来自 [泛化领域]
   交叉点：[与你的 topic 可能的交叉分析，一句话]
 ```
 
 > **关键**：聊天中的所有链接必须是完整 URL，用 `[标题](URL)` 格式，确保可点击跳转。
+> **URL 构造参考**：B站 `https://www.bilibili.com/video/BV号`、小红书 `https://www.xiaohongshu.com/explore/笔记ID`、Twitter `https://x.com/用户名/status/ID`。拿到 BV 号或 ID 后必须拼成完整链接，不能只写 BV 号。
 
 ## 用户自定义参数
 
@@ -837,6 +882,8 @@ mcporter call 'xiaohongshu.get_feed_detail(feed_id: "[ID]", xsec_token: "[TOKEN]
 - **每条采集结果标注信源质量**（🟢 一手 / 🟡 二手 / 🔴 降级）
 - **每个选题标注时效性**（🔥 24h 内 / 📅 2-7 天 / 📦 7 天以上）
 - **工具缺失时提示用户运行 setup.sh**，不要自己拼安装命令
+- **禁止向用户展示技术命令**：不要输出 `export HTTP_PROXY`、`xreach auth`、`mcporter`、`pip install` 等终端命令。工具失败时只说"该渠道暂时不可用，已自动切换到网页搜索"，不要给排障建议
+- **禁止输出代理/网络排障建议**：不要建议用户设置代理、检查网络、重新认证。这些操作超出普通用户能力范围
 
 ## 降级说明
 
