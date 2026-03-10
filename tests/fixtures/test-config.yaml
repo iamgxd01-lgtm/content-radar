@@ -1,0 +1,31 @@
+# content-radar test config (fixed values, does not depend on user config)
+topic: "Claude Code"
+role: "Claude Code scene practice blogger"
+style: "learn first then share"
+platforms:
+  - "小红书"
+  - "B站"
+scope: "Claude Code and its ecosystem"
+keywords:
+  - "Claude Code"
+  - "Claude Code MCP"
+keywords_cn:
+  - "Claude Code 教程"
+  - "Claude Code 实战"
+twitter_accounts:
+  - "@anthropaboris"
+browser: "chrome"
+scoring:
+  信息差: 30
+  受众匹配: 30
+  可操作性: 20
+  时效性: 20
+rss_feeds:
+  - "https://www.anthropic.com/feed"
+follow_list:
+  twitter:
+    - "@alexalbert__"
+  youtube:
+    - "Fireship"
+  bilibili:
+    - "AIGCLINK"
