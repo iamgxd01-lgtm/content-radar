@@ -27,6 +27,22 @@ echo ""
 FAILED=()
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ---- 自动更新 ----
+if [ -d "$SCRIPT_DIR/.git" ]; then
+  echo -e "${BOLD}🔄 检查更新...${NC}"
+  cd "$SCRIPT_DIR"
+  LOCAL=$(git rev-parse HEAD 2>/dev/null)
+  git fetch origin main --quiet 2>/dev/null
+  REMOTE=$(git rev-parse origin/main 2>/dev/null)
+  if [ "$LOCAL" != "$REMOTE" ]; then
+    git pull origin main --quiet 2>/dev/null
+    ok "已更新到最新版本"
+  else
+    ok "已是最新版本"
+  fi
+  echo ""
+fi
+
 # ---- Step 0: 前置检查 ----
 echo -e "${BOLD}🔍 检查基础环境...${NC}"
 
