@@ -9,7 +9,7 @@
 | **GitHub** | gh CLI | 开源项目和代码趋势 | 需要 `gh auth login` |
 | **Exa** | mcporter | 语义搜索，比关键词搜索更精准 | 需要 Exa API key |
 | **RSS** | feedparser | 官方博客自动推送 | 需要知道 RSS 地址 |
-| **微信公众号** | miku-ai | 国内深度文章 | 部分文章需要 Camoufox 读全文 |
+| **微信公众号** | 网页搜索 | 国内深度文章 | 通过 WebSearch 搜索 mp.weixin.qq.com |
 | **网页搜索** | 内置/Exa/Jina | 兜底覆盖所有来源 | 结果可能不够精准 |
 
 ## 需求侧（受众需求——受众关心什么）
@@ -18,8 +18,8 @@
 |------|------|---------|---------|
 | **小红书** | mcporter (MCP) | 热帖 + 互动数据 + 评论痛点 | platforms 包含"小红书" |
 | **B站** | yt-dlp | 视频竞品 + 播放量 | platforms 包含"B站" |
-| **微信公众号** | miku-ai | 深度竞品文章 | platforms 包含"微信公众号" |
-| **抖音** | agent-reach | 短视频爆款 + 热度数据 | platforms 包含"抖音" |
+| **微信公众号** | 网页搜索 | 深度竞品文章 | platforms 包含"微信公众号" |
+| **抖音** | 网页搜索 | 短视频爆款 + 热度数据 | platforms 包含"抖音" |
 | **YouTube** | yt-dlp | 复用供给侧数据 | platforms 包含"YouTube" |
 | **Twitter/X** | xreach | 复用供给侧数据 | platforms 包含"Twitter" |
 
@@ -27,13 +27,7 @@
 
 ### 采集方式
 
-**优先方案**：agent-reach 抖音渠道
-```bash
-agent-reach search douyin "关键词" --limit 10
-agent-reach read douyin "URL"
-```
-
-**降级方案**：WebSearch
+抖音反爬严格，暂无公开采集工具，统一用网页搜索替代：
 ```
 WebSearch "site:douyin.com 关键词"
 ```
@@ -52,10 +46,10 @@ WebSearch "site:douyin.com 关键词"
 Twitter (xreach)  ──不可用──>  Exa (site:x.com)  ──不可用──>  网页搜索  [标注 🔴]
 YouTube (yt-dlp)  ──不可用──>  网页搜索 (youtube.com)                    [标注 🔴]
 GitHub (gh)       ──不可用──>  网页搜索 (github.com)                     [标注 🔴]
-微信 (miku-ai)    ──不可用──>  网页搜索 (mp.weixin.qq.com)              [标注 🔴]
+微信 (网页搜索)    ──────────>  WebSearch (mp.weixin.qq.com)             [标注 🔴]
 B站 (yt-dlp)      ──不可用──>  网页搜索 (bilibili.com)                  [标注 🔴]
 小红书 (mcporter)  ──不可用──>  curl 直接调用 MCP ──不可用──> 网页搜索   [标注 🔴]
-抖音 (agent-reach) ──不可用──>  网页搜索 (douyin.com)                    [标注 🔴]
+抖音 (网页搜索)    ──────────>  WebSearch (douyin.com)                    [标注 🔴]
 Exa (mcporter)    ──不可用──>  网页搜索                                  [标注 🔴]
 ```
 

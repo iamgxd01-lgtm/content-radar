@@ -17,7 +17,7 @@ user-invocable: true
 运行前，读取 `~/.content-radar/my-radar.yaml` 配置文件。
 
 - **文件存在** → 读取配置，用其中的字段替换后续所有搜索关键词和约束条件
-- **文件不存在** → 启动「首次配置引导」（见下方），问 3 个问题后自动生成配置文件
+- **文件不存在** → 启动「首次配置引导」（见下方），问 5 个问题后自动生成配置文件
 
 **配置校验**：读取后用以下命令检查 YAML 格式是否合法：
 ```bash
@@ -37,8 +37,8 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 | `keywords_cn` | 中文搜索关键词 | ✅ | ["Claude Code 教程", "Claude Code 实战"] |
 | `scope` | 选题边界 | ✅ | "Claude Code 及其生态" |
 | `scoring` | 评分维度和权重（总和 100） | ✅ | {信息差: 30, 受众匹配: 30, 可操作性: 20, 时效性: 20} |
-| `browser` | 用户常用浏览器 | ✅ | "chrome" |
-| `proxy` | 代理地址（Step 0 自动检测写入） | 自动 | "http://127.0.0.1:7890" |
+| `browser` | 浏览器（仅用于本地读取登录状态） | ✅ | "chrome" |
+| `proxy` | 代理地址（可选，从系统环境变量自动检测） | 自动 | "http://your-proxy:port" |
 | `twitter_accounts` | 重点关注的 Twitter 账号 | 可选 | ["@anthropaboris"] |
 | `follow_list` | 关注圈创作者（行业风向标） | 可选 | {twitter: ["@alexalbert__"], youtube: ["Fireship"], bilibili: ["AIGCLINK"], xiaohongshu: ["用户ID"]} |
 | `breaking_keywords` | 破圈雷达泛化关键词 | 可选 | ["AI agent", "vibe coding"] |
@@ -129,7 +129,7 @@ python3 -c "import yaml; yaml.safe_load(open('$HOME/.content-radar/my-radar.yaml
 
 **展示话术**：
 ```
-YouTube 和 B站 的数据采集需要读取你的浏览器登录状态。
+YouTube 和 B站 的数据采集需要读取你的浏览器登录状态（仅在本地读取，不会上传或存储你的任何数据）。
 你平时主要用哪个浏览器？
 
 1. Chrome（谷歌浏览器）
@@ -210,7 +210,7 @@ else
 fi
 ```
 
-> **重要**：mcporter 是命令行工具（CLI），直接用 `mcporter call` 调用即可，**不需要启动 HTTP 服务，不需要检查 localhost 端口**。
+> **重要**：mcporter 是命令行工具（CLI），直接用 `mcporter call` 调用即可。小红书需要 MCP 服务器在后台运行（端口 18060），如果检测失败会自动降级到网页搜索。
 
 #### 代理自动检测
 
@@ -226,16 +226,15 @@ else
 fi
 ```
 
-- **检测到代理**：所有 xreach 命令自动加 `--proxy $PROXY`
-- **未检测到代理**：先不加 proxy 直接调用；如果 xreach 报 TLS/网络错误，尝试常见代理端口（`http://127.0.0.1:7890`、`http://127.0.0.1:7897`、`http://127.0.0.1:1080`）；都失败则降级到 WebSearch
-- **将检测到的可用代理写入配置文件** `proxy` 字段，后续无需再检测
+- **检测到代理**：所有 xreach 命令自动加 `--proxy $PROXY`，并将代理写入配置文件 `proxy` 字段，后续无需再检测
+- **未检测到代理**：先不加 proxy 直接调用；如果 xreach 报 TLS/网络错误，自动降级到 WebSearch
 
 #### 根据结果处理
 
 - **全部 OK** → 输出状态面板，进入认证引导
 - **PYYAML=MISSING（自动安装也失败）** → 这是硬依赖，告诉用户：`配置文件功能需要 pyyaml，请运行：pip3 install pyyaml`，等用户确认后重新检测
 - **其他工具 MISSING** → 告诉用户：`有工具未安装，请先运行 bash setup.sh（在 content-radar 目录下）`，等用户确认后重新检测
-- **XHS=MISSING 但 MCPORTER=OK** → 小红书 MCP 服务未配置或无法连接。在状态面板中标为 `⚠️ 小红书 — 用网页搜索替代（不影响使用）`，运行时自动降级到 WebSearch
+- **XHS=MISSING 但 MCPORTER=OK** → 小红书 MCP 服务未运行或登录已过期。在状态面板中标为 `⚠️ 小红书 — 用网页搜索替代（不影响使用）`，运行时自动降级到 WebSearch
 
 #### 输出状态面板
 
@@ -562,16 +561,11 @@ yt-dlp --cookies-from-browser {{browser}} --dump-json "https://www.bilibili.com/
 
 #### 2f. 抖音（当 platforms 包含"抖音"时采集）
 
-**agent-reach 搜抖音可用时**：
-```bash
-# 使用 agent-reach 的抖音渠道搜索
-agent-reach search douyin "{{keywords_cn[0]}}" --limit 10
-```
-→ 标注：🟢 一手数据
-
-**不可用时**：
 → WebSearch `"site:douyin.com {{keywords_cn[0]}} {{当前年月}}"`
+→ WebSearch `"抖音 {{keywords_cn[0]}} 热门 {{当前年月}}"`
 → 标注：🔴 降级数据
+
+> 抖音反爬严格，暂无公开采集工具，统一用网页搜索替代。
 
 ---
 

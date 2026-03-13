@@ -204,6 +204,24 @@ if [ -f "$SCRIPT_DIR/config/mcporter.json" ]; then
   ok "MCP 配置已复制"
 fi
 
+# 确保全局 mcporter 配置中小红书指向本地 HTTP 服务
+if command -v mcporter &>/dev/null; then
+  mkdir -p "$HOME/.mcporter"
+  MCPORTER_GLOBAL="$HOME/.mcporter/mcporter.json"
+  if [ ! -f "$MCPORTER_GLOBAL" ] || grep -q '"npx"' "$MCPORTER_GLOBAL" 2>/dev/null; then
+    cat > "$MCPORTER_GLOBAL" << 'MCPEOF'
+{
+  "mcpServers": {
+    "xiaohongshu": {
+      "baseUrl": "http://localhost:18060/mcp"
+    }
+  }
+}
+MCPEOF
+    ok "mcporter 全局配置已更新"
+  fi
+fi
+
 # ---- Step 4b: 验证 MCP 服务可用性 ----
 if command -v mcporter &>/dev/null; then
   echo ""
@@ -254,7 +272,7 @@ echo ""
 echo "  1. 打开你的 AI 编辑器（Claude Code / Qwen Code / Codex 等）"
 echo "  2. 输入 \"内容雷达\" → 全网扫描找选题"
 echo "  3. 输入 \"拆解 [URL]\" → 深度拆解一条爆款内容"
-echo "  4. 首次运行会问你 3 个问题来了解你的定位，之后全自动"
+echo "  4. 首次运行会问你 5 个问题来了解你的定位，之后全自动"
 echo ""
 echo -e "${BOLD}📢 本版亮点${NC}"
 echo ""

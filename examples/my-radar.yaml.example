@@ -5,9 +5,9 @@
 # ========================================
 
 # --- 你是谁 ---
-topic: "Claude Code"                        # 你的内容主题（1-3个词）
-role: "Claude Code 场景实战博主"             # 你的博主定位（一句话描述）
-style: "先学后分享，原理藏在场景里"           # 你的创作风格
+topic: "AI 工具"                             # 你的内容主题（1-3个词）
+role: "AI 工具测评博主"                       # 你的博主定位（一句话描述）
+style: "先学后分享，大白话科普"               # 你的创作风格
 
 # --- 你在哪发 ---
 platforms:                                   # 你的发布平台（影响需求侧采集哪些平台）
@@ -20,27 +20,28 @@ platforms:                                   # 你的发布平台（影响需求
 
 # --- 搜什么（英文关键词，用于 Twitter/YouTube/Exa/GitHub 搜索）---
 keywords:
-  - "Claude Code"
-  - "Claude Code MCP"
-  - "Claude Code skill"
-  - "Claude Code agent"
+  - "AI tools"
+  - "AI coding assistant"
+  - "AI productivity"
+  - "AI agent"
 
 # --- 搜什么（中文关键词，用于 小红书/B站/微信/抖音 搜索）---
 keywords_cn:
-  - "Claude Code"
-  - "Claude Code 教程"
-  - "Claude Code 实战"
-  - "Claude Code 技巧"
+  - "AI 工具"
+  - "AI 工具推荐"
+  - "AI 效率工具"
+  - "AI 工具教程"
 
 # --- 选题边界（AI 只推荐这个范围内的选题）---
-scope: "Claude Code 及其生态（MCP、Skill、Agent 模式、子智能体等）"
+scope: "AI 工具及其应用场景（编程助手、写作工具、设计工具、效率工具等）"
 
 # --- 重点关注的信息源（可选，AI 会根据你的主题自动推荐）---
-twitter_accounts:
-  - "@anthropaboris"                         # Boris Cherny, Claude Code 作者
+# twitter_accounts:
+#   - "@OpenAI"                              # 按你关注的领域填写
+#   - "@AnthropicAI"
 
-rss_feeds:
-  - "https://www.anthropic.com/feed"         # Anthropic 官方博客
+# rss_feeds:
+#   - "https://openai.com/blog/rss.xml"     # 按你关注的领域填写
 
 # --- 评分偏好（维度名自定义，权重总和 100）---
 scoring:
@@ -96,6 +97,29 @@ scoring:
 # ========================================
 # 其他博主配置参考
 # ========================================
+
+# --- AI 编程助手博主（参考配置）---
+# topic: "Claude Code"
+# role: "Claude Code 场景实战博主"
+# style: "先学后分享，原理藏在场景里"
+# platforms:
+#   - "小红书"
+# keywords:
+#   - "Claude Code"
+#   - "Claude Code MCP"
+#   - "Claude Code skill"
+#   - "Claude Code agent"
+# keywords_cn:
+#   - "Claude Code"
+#   - "Claude Code 教程"
+#   - "Claude Code 实战"
+#   - "Claude Code 技巧"
+# scope: "Claude Code 及其生态（MCP、Skill、Agent 模式、子智能体等）"
+# scoring:
+#   信息差: 35
+#   受众匹配: 35
+#   可操作性: 20
+#   时效性: 10
 
 # --- AI 视觉一人博主（参考配置）---
 # topic: "AI 视频/图像"
